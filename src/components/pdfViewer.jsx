@@ -8,7 +8,8 @@ const PdfViewer = ({ url }) => {
         console.log("url==", url);
         
         try {
-            const response = await fetch(`http://localhost:8090/api/short/report?url=${url}`);
+            // const response = await fetch(`http://localhost:8090/api/short/report?url=${url}`);
+            const response = await fetch(`https://mindforge-backend.onrender.com/api/short/report?url=${url}`);
             // const response = await fetch(`${url}`);
             console.log("response -> ", response);
             

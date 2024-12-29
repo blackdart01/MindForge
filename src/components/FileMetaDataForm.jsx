@@ -22,7 +22,8 @@ const FileMetadataForm = () => {
         event.preventDefault();
 
         try {
-            const response = await axios.post('http://localhost:8090/api/documents/save', formData);
+            // const response = await axios.post('http://localhost:8090/api/documents/save', formData);
+            const response = await axios.post('https://mindforge-backend.onrender.com/api/documents/save', formData);
             console.log('File metadata created successfully:', response.data);
         } catch (error) {
             console.error('Error creating file metadata:', error);

@@ -18,7 +18,8 @@ const Tests = () => {
   useEffect(() => {
     const fetchTests = async () => {
       try {
-        const response = await axios.get('http://localhost:8090/api/documents/getAll'); // Replace with your actual API endpoint
+        // const response = await axios.get('http://localhost:8090/api/documents/getAll'); // Replace with your actual API endpoint
+        const response = await axios.get('https://mindforge-backend.onrender.com/api/documents/getAll'); // Replace with your actual API endpoint
         console.log("res -> ", response);
         
         const { data } = response;
