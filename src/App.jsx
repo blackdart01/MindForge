@@ -9,6 +9,7 @@ import MainScreen from './Screens/MainScreen';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import Tests from './Screens/Tests';
 import DrawerComponents from './MajorComponents/DrawerComponents';
+import AdminScreen from './Screens/AdminScreen';
 
 function App() {
   const [isAdmin, setAdmin] = useState(false);
@@ -43,6 +44,7 @@ function App() {
         {/* <Route path="/" element={<MainScreen />} /> */}
         <Route index element={<MainScreen />} />
             <Route path="/test" element={<Tests />} />
+            <Route path="/admin" element={<AdminScreen />} />
           {/* <Route path="blogs" element={<Blogs />} />
           <Route path="contact" element={<Contact />} /> */}
           {/* <Route path="*" element={<NoPage />} /> */}

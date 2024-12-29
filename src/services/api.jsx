@@ -1,39 +1,41 @@
 import axios from "axios";
 
 const instance = axios.create({
-    // baseURL: 'http://localhost:8090/api/documents',
-    baseURL: 'https://mindforge-backend.onrender.com/api/documents',
+    baseURL: 'http://localhost:8090',
+    // baseURL: 'https://mindforge-backend.onrender.com/api/documents',
     headers: {
         'content-type': 'application/octet-stream'
     },
 });
 export default {
-    getData: () =>
+    getAllData: () =>
         instance({
             'method': 'GET',
-            'url': '/getAll',
+            'url': '/api/documents/getAll',
             'headers': {
-                'content-type': 'application/json'  // override instance defaults
+                'content-type': 'application/json'
             },
             transformResponse: [function (data) {
                 console.log('Transforming data...')
                 const json = JSON.parse(data)
                 return json;
             }],
-            // 'params': {
-            //     'search': 'parameter',
-            // },
         }),
-    postData: () =>
+    saveDocumentData: (formData) =>        
         instance({
             'method': 'POST',
-            'url': '/api',
-            'data': {
-                'item1': 'data1',
-                'item2': 'item2'
-            },
+            'url': '/api/documents/save',
+            'data': formData,
             'headers': {
-                'content-type': 'application/json'  // override instance defaults
+                'content-type': 'application/json'
+            }
+        }),
+    updateTestStatus: (id, status) =>
+        instance({
+            'method': 'POST',
+            'url': `/api/documents/updateTestStatus/${id}?status=${status}`,
+            'headers': {
+                'content-type': 'application/json'
             }
         })
 }

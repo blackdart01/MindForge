@@ -1,12 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react'
-import DrawerComponents from '../MajorComponents/DrawerComponents'
-import TestComponent from '../MajorComponents/TestComponent'
-import Data from '../components/data'
+import { useEffect, useRef, useState } from 'react'
 import { Tab, TabList, TabPanel, Tabs } from 'react-tabs'
-import { Link } from 'react-router-dom'
-import { MdOutlineAnalytics } from 'react-icons/md'
-import axios from 'axios'
 import PropTypes from 'prop-types'
+import api from '../services/api'
 // import PropTypes from 'prop-types'; 
 
 const Tests = () => {
@@ -14,29 +9,24 @@ const Tests = () => {
   const [activeTests, setActiveTests] = useState([]);
   const [backlogTests, setBacklogTests] = useState([]);
   const [completedTests, setCompletedTests] = useState([]);
-
+  const [isRefreshing, setIsRefreshing] = useState(false);
   useEffect(() => {
     const fetchTests = async () => {
       try {
-        // const response = await axios.get('http://localhost:8090/api/documents/getAll'); // Replace with your actual API endpoint
-        const response = await axios.get('https://mindforge-backend.onrender.com/api/documents/getAll'); // Replace with your actual API endpoint
-        console.log("res -> ", response);
-        
+        setIsRefreshing(true);
+        const response = await api.getAllData();
         const { data } = response;
-
-
-        const active = data.filter(test => test.uri && test.uri.length > 0);
-        const backlog = data.filter(test => !test.uri || test.uri.length === 0);
+        const active = data.filter(test => test.uri && test.uri.length > 0 && (test.testStatus == 'active' || test.testStatus == null));
+        // const backlog = data.filter(test => !test.uri || test.uri.length === 0 || test.testStatus == 'backlog' || test.testStatus==null);
+        const backlog = data.filter(test => test.testStatus == 'backlog' || test.testStatus==null);
+        const completed = data.filter(test => test.testStatus == 'completed');
         setActiveTests(active);
         setBacklogTests(backlog);
-
-        // Assuming your API response has a status field to categorize tests
-        // setActiveTests(data.filter(test => test.status === 'active'));
-        // setBacklogTests(data.filter(test => test.status === 'backlog'));
-        // setCompletedTests(data.filter(test => test.status === 'completed'));
-
+        setCompletedTests(completed);
       } catch (error) {
         console.error('Error fetching tests:', error);
+      } finally {
+        setIsRefreshing(false); // Reset refreshing state after fetching
       }
     };
 
@@ -69,7 +59,7 @@ const Tests = () => {
 function TagCreate({ tags }){
     return (
       <div className="flex flex-wrap gap-2">
-        {tags.map((tag, index) => (
+        {tags!=null && tags.map((tag, index) => (
           <span
             key={index}
             className="bg-blue-100 text-blue-500 font-semibold px-1 py-0.5 rounded-md text-xs"
@@ -123,11 +113,15 @@ function TestListTab({ tests, type }) {
     return () => clearInterval(intervalId);
   }, [timers, isPaused, isStarted]); 
 
-  const startTestTimer = (testId, duration) => {
-    console.log("testId ->", testId);
+  const startTestTimer = (testId, duration, url) => {
+    if (isStarted[testId] && !isSubmitted[testId]){
+      api.updateTestStatus(testId, "completed");
+      <Tests />
+    }
     if(isStarted[testId]){
       setIsSubmitted({...isSubmitted, [testId]: true})
     } else {      
+      window.open(url.replace(/view\?/g, 'preview?'), '_blank')
       setTimers({ ...timers, [testId]: 60 * duration }); // Set timer to 60 minutes
       setIsPaused({ ...isPaused, [testId]: false });
       setIsStarted({ ...isStarted, [testId]: true });
@@ -140,10 +134,6 @@ function TestListTab({ tests, type }) {
       togglePause(testId)
     else
       setIsPaused({ ...isPaused, [testId]: true });
-    console.log("pauseTestTimer ->", isPaused[testId]);
-    console.log("pauseTestTimer timers[test.id] ->", timers[testId]);
-    console.log("pauseTestTimer isStarted[test.id] ->", isStarted[testId]);
-    
   };
 
   const togglePause = (testId) => {
@@ -157,7 +147,10 @@ function TestListTab({ tests, type }) {
       <ul className="space-y-4">
         {tests.map((test) => (
           <li key={test.id} className="border border-gray-200 rounded-md p-4">
-            <h3 className="text-lg font-semibold">{test.name}</h3>
+            <div className="flex flex-row justify-between">
+              <h3 className="text-lg font-semibold">{test.name}</h3>
+              {test.testStatus == 'active' && <h5 className="text-sm content-center">Test Expires On : {new Date(test.testExpiry).toLocaleString()}</h5>}
+            </div>
             <TagCreate tags={test.tags}/>
             {/* <p>Tags: {test.tags.join(', ')}</p> */}
             {/* <button onClick={() => setShowIframe(!showIframe)} className="mt-2 bg-blue-500 hover:bg-blue-700 text-white text-sm font-bold py-1 px-2 rounded"> 
@@ -178,11 +171,11 @@ function TestListTab({ tests, type }) {
               className="mt-2 bg-blue-500 hover:bg-blue-700 text-white text-sm font-bold py-1 px-2 rounded">
               {showIframe[test.id] ? "Hide Preview" : "View Preview"}
             </button>
-            <button
-              onClick={() => { startTestTimer(test.id, test.duration) }}
+            {test.testStatus == 'active' && <button
+              onClick={() => { startTestTimer(test.id, test.duration, test.uri) }}
               className={`mt-2 ml-2 bg-blue-500 hover:bg-blue-700 text-white text-sm font-bold py-1 px-2 rounded ${timers[test.id] && isStarted[test.id] ? 'bg-green-500 hover:bg-green-700' : ''}`}>
               {isSubmitted[test.id] ? "Completed" : timers[test.id] && isStarted[test.id] ? "Submit Test" : "Start Test"}
-            </button>
+            </button>}
             
             {isStarted[test.id] && !isSubmitted[test.id] &&
                 <button
@@ -213,12 +206,6 @@ function TestListTab({ tests, type }) {
       {tests.length == 0 && <p>No Data available</p>}
     </div>
   );
-
-  // return (
-  //   <>
-  //     <Data />
-  //   </>
-  // )
 }
 
 export default Tests

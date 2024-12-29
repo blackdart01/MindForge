@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 
 const FileMetadataForm = () => {
     const [formData, setFormData] = useState({
@@ -22,8 +22,7 @@ const FileMetadataForm = () => {
         event.preventDefault();
 
         try {
-            // const response = await axios.post('http://localhost:8090/api/documents/save', formData);
-            const response = await axios.post('https://mindforge-backend.onrender.com/api/documents/save', formData);
+            const response = await api.saveDocumentData(formData);
             console.log('File metadata created successfully:', response.data);
         } catch (error) {
             console.error('Error creating file metadata:', error);
