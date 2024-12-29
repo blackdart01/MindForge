@@ -9,11 +9,11 @@ const Tests = () => {
   const [activeTests, setActiveTests] = useState([]);
   const [backlogTests, setBacklogTests] = useState([]);
   const [completedTests, setCompletedTests] = useState([]);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  // const [isStarted, setIsStarted] = useState({});
+  
   useEffect(() => {
     const fetchTests = async () => {
       try {
-        setIsRefreshing(true);
         const response = await api.getAllData();
         const { data } = response;
         const active = data.filter(test => test.uri && test.uri.length > 0 && (test.testStatus == 'active' || test.testStatus == null));
@@ -23,13 +23,15 @@ const Tests = () => {
         setActiveTests(active);
         setBacklogTests(backlog);
         setCompletedTests(completed);
+        // data.map(test => {
+        //   if (test.testProgressDuration != null) {
+        //     setIsStarted({ ...isStarted, [test.id]: false });
+        //   }
+        // })
       } catch (error) {
         console.error('Error fetching tests:', error);
-      } finally {
-        setIsRefreshing(false); // Reset refreshing state after fetching
       }
     };
-
     fetchTests();
   }, []);
 
@@ -43,13 +45,16 @@ const Tests = () => {
         </TabList>
 
         <TabPanel>
-          <TestListTab tests={activeTests} type="Active Tests" />
+          <TestListTab tests={activeTests}  type="Active Tests" />
+          {/* <TestListTab tests={activeTests} isStarted={isStarted} setIsStarted={setIsStarted} type="Active Tests" /> */}
         </TabPanel>
         <TabPanel>
-          <TestListTab tests={backlogTests} type="Backlog Tests" />
+          <TestListTab tests={backlogTests}  type="Backlog Tests" />
+          {/* <TestListTab tests={backlogTests} isStarted={isStarted} setIsStarted={setIsStarted} type="Backlog Tests" /> */}
         </TabPanel>
         <TabPanel>
           <TestListTab tests={completedTests} type="Completed Tests" />
+          {/* <TestListTab tests={completedTests} isStarted={isStarted} setIsStarted={setIsStarted} type="Completed Tests" /> */}
         </TabPanel>
       </Tabs>
     </div>
@@ -77,9 +82,31 @@ function TestListTab({ tests, type }) {
   const [showIframeTimer, setShowIframeTimer] = useState({});
   const [timers, setTimers] = useState({});
   const [isPaused, setIsPaused] = useState({});
-  const [isStarted, setIsStarted] = useState({});
-  const [isSubmitted, setIsSubmitted] = useState({});
+  const [isStarted, setIsStarted] = useState({ });
   const intervalRef = useRef(null);
+  const [isSubmitted, setIsSubmitted] = useState({});
+  
+  // console.log("preStart ->", isStarted);
+  // tests.map(test => {
+  //   if (test.testProgressDuration != null){
+  //     setIsStarted({ ...isStarted, [test.test_id]: true });
+  //   }
+  // })
+  useEffect(() => {
+    const refreshSystem = () => {
+      tests.map(test => {
+        if (test.testProgressDuration != null) {
+          setIsStarted({ ...isStarted, [test.id]: true });
+          setTimers({...timers, [test.id] : test.testProgressDuration});
+          setIsPaused({...isPaused, [test.id]: true})
+          // setIsStarted({ ...isStarted, [test.id]: true });
+        }
+      })
+    };
+    refreshSystem();
+  }, []);
+  // console.log("preStart ->", isStarted);
+
   TestListTab.propTypes = {
     tests: PropTypes.arrayOf(
       PropTypes.shape({
@@ -91,9 +118,11 @@ function TestListTab({ tests, type }) {
         description: PropTypes.string.isRequired,
         tags: PropTypes.arrayOf(PropTypes.string).isRequired,
         uploadDate: PropTypes.string,
+        testProgressDuration: PropTypes.number
       })
     ).isRequired,
     type: PropTypes.string.isRequired,
+    isStarted: PropTypes.arrayOf(PropTypes.object)
   };
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -101,6 +130,7 @@ function TestListTab({ tests, type }) {
       for (const testId in timers) {
         if (timers[testId] > 0 && isStarted[testId] && !isPaused[testId] && !isSubmitted[testId]) {
           updatedTimers[testId] = timers[testId] - 1;
+          api.updateTestProgress(testId, updatedTimers[testId]);
         } else {
           updatedTimers[testId] = timers[testId];
         }
@@ -113,19 +143,18 @@ function TestListTab({ tests, type }) {
     return () => clearInterval(intervalId);
   }, [timers, isPaused, isStarted]); 
 
-  const startTestTimer = (testId, duration, url) => {
-    if (isStarted[testId] && !isSubmitted[testId]){
-      api.updateTestStatus(testId, "completed");
-      <Tests />
+  const startTestTimer = (test) => {
+    if (isStarted[test.id] && !isSubmitted[test.id]){
+      api.updateTestStatus(test.id, "completed");
     }
-    if(isStarted[testId]){
-      setIsSubmitted({...isSubmitted, [testId]: true})
-    } else {      
-      window.open(url.replace(/view\?/g, 'preview?'), '_blank')
-      setTimers({ ...timers, [testId]: 60 * duration }); // Set timer to 60 minutes
-      setIsPaused({ ...isPaused, [testId]: false });
-      setIsStarted({ ...isStarted, [testId]: true });
-      setShowIframeTimer({ ...showIframeTimer, [testId]: !showIframeTimer[testId] });
+    if (isStarted[test.id]){
+      setIsSubmitted({ ...isSubmitted, [test.id]: true})
+    } else {            
+      window.open(test.uri.replace(/view\?/g, 'preview?'), '_blank')
+      setTimers({ ...timers, [test.id]: 60 * test.duration - test.testProgressDuration });
+      setIsPaused({ ...isPaused, [test.id]: false });
+      setIsStarted({ ...isStarted, [test.id]: true });
+      setShowIframeTimer({ ...showIframeTimer, [test.id]: !showIframeTimer[test.id] });
     }
   };
 
@@ -172,22 +201,24 @@ function TestListTab({ tests, type }) {
               {showIframe[test.id] ? "Hide Preview" : "View Preview"}
             </button>
             {test.testStatus == 'active' && <button
-              onClick={() => { startTestTimer(test.id, test.duration, test.uri) }}
-              className={`mt-2 ml-2 bg-blue-500 hover:bg-blue-700 text-white text-sm font-bold py-1 px-2 rounded ${timers[test.id] && isStarted[test.id] ? 'bg-green-500 hover:bg-green-700' : ''}`}>
-              {isSubmitted[test.id] ? "Completed" : timers[test.id] && isStarted[test.id] ? "Submit Test" : "Start Test"}
+              onClick={() => { startTestTimer(test) }}
+              className={`mt-2 ml-2 bg-blue-500 hover:bg-blue-700 text-white text-sm font-bold py-1 px-2 rounded ${ isStarted[test.id] ? 'bg-green-500 hover:bg-green-700' : ''}`}>
+              {isSubmitted[test.id] ? "Completed" : isStarted[test.id]? "Submit Test" : "Start Test"} 
             </button>}
-            
+            {/* {console.log("isSt", isStarted[test.id],"       ", isPaused[test.id], "      ", timers)} */}
             {isStarted[test.id] && !isSubmitted[test.id] &&
                 <button
                   onClick={() => pauseTestTimer(test.id)}
-                  className={`mt-2 ml-2 text-white text-sm font-bold py-1 px-2 rounded ${timers[test.id] && isPaused[test.id] ? 'bg-slate-500 hover:bg-slate-700' : 'bg-red-500 hover:bg-red-700'}`}>
-                  {timers[test.id] && isPaused[test.id] ? "Resume Test" : "Pause Test"}
+                className={`mt-2 ml-2 text-white text-sm font-bold py-1 px-2 rounded ${timers[test.id] && isPaused[test.id] ? 'bg-slate-500 hover:bg-slate-700' : 'bg-red-500 hover:bg-red-700'}`}>
+                {timers[test.id] && isPaused[test.id] ? "Resume Test" : "Pause Test"}
                 </button>
             }
-            {timers[test.id] && (
+            {timers[test.id] ? (
               <span className="ml-2 text-sm font-semibold">
                 {Math.floor(timers[test.id] / 60)}:{Math.floor(timers[test.id] % 60).toString().padStart(2, '0')}
               </span>
+            ) : test.duration && (
+                <span className="ml-2">Duration: {test.duration - Math.floor(test.testProgressDuration != null ? test.testProgressDuration/60 : 0)} min</span>
             )}
             {showIframe[test.id] && test.uri && test.uri.length > 0 && (
               <iframe

@@ -1,8 +1,8 @@
 import axios from "axios";
 
 const instance = axios.create({
-    baseURL: 'http://localhost:8090',
-    // baseURL: 'https://mindforge-backend.onrender.com/api/documents',
+    // baseURL: 'http://localhost:8090',
+    baseURL: 'https://mindforge-backend.onrender.com/api/documents',
     headers: {
         'content-type': 'application/octet-stream'
     },
@@ -34,6 +34,14 @@ export default {
         instance({
             'method': 'POST',
             'url': `/api/documents/updateTestStatus/${id}?status=${status}`,
+            'headers': {
+                'content-type': 'application/json'
+            }
+        }),
+    updateTestProgress: (id, progress) =>
+        instance({
+            'method': 'POST',
+            'url': `/api/documents/updateTestProgress/${id}?progress=${progress}`,
             'headers': {
                 'content-type': 'application/json'
             }
