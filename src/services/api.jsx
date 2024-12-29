@@ -2,7 +2,7 @@ import axios from "axios";
 
 const instance = axios.create({
     // baseURL: 'http://localhost:8090',
-    baseURL: 'https://mindforge-backend.onrender.com/api/documents',
+    baseURL: 'https://mindforge-backend.onrender.com',
     headers: {
         'content-type': 'application/octet-stream'
     },
